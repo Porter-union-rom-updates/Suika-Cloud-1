@@ -70,7 +70,7 @@ module.exports = {
 
         
             let helpMessage = '';
-            helpMessage += `╔═════☆ ━━━ ☠ ${botName.toUpperCase() ☠ ━━━  ☆═════╗\n\n`;
+            helpMessage += `╔═════☆ ${botName.toUpperCase()} HELP ☆═════╗\n\n`;
             helpMessage += `👑 Owner: ${ownerName}  \n`;
             helpMessage += `💻 Commands: ${totalCommands}  \n\n`;
 
@@ -94,7 +94,7 @@ module.exports = {
                 helpMessage += '\n';
             }
 
-            helpMessage += `╚═════☆ Stay sussy, stay smart buhha☆═════╝  \n`;
+            helpMessage += `╚═════☆ Stay sussy, stay smart ☆═════╝  \n`;
             helpMessage += `💬 Tip: Use !help <command> for details`;
 
             return api.sendMessage(helpMessage, event.threadID);
