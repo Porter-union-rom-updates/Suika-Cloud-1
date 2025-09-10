@@ -7,7 +7,7 @@ module.exports = {
     prefix: true,
     adminOnly: false,
     aliases: [],
-    description: 'replay hello message',
+    description: '',
     category: 'media',
     guide: {
       en: '   {pn}alldl]'
