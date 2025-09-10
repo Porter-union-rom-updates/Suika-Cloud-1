@@ -1,16 +1,17 @@
-const axios = require('axios');
 module.exports = {
   config: {
-    name: "alldl",
-    aliases: [],
-    version: "1.6",
-    author: "Tawsif~ & Dipto APIs",
+    name: 'alldl',
+    version: '1.0',
+    author: 'Farhan',
     countDown: 5,
-    role: 0,
-    longDescription: "",
-    category: "media",
-    guide: { en: { body: "{pn} <url>" } }
-  },
+    prefix: true,
+    adminOnly: false,
+    aliases: [],
+    description: 'replay hello message',
+    category: 'media',
+    guide: {
+      en: '   {pn}alldl]'
+      },
   onStart: async function({ message, args, event, threadsData, role }) {
     let videoUrl = args.join(" ");
 
@@ -78,4 +79,4 @@ async function download({ videoUrl, message, event }) {
     message.reaction("❌", event.messageID);
     console.error("Download Error:", error);
   }
-  }
+      }
