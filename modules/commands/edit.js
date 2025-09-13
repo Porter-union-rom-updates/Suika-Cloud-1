@@ -3,7 +3,7 @@ module.exports = {
 config: {
 	name: "edit",
 	author: "Tawsif~",
-	category: "image",
+	category: "media",
 	countDown: 5,
 	role: 0,
 	guide: { en: "edit <prompt> | reply to image"
