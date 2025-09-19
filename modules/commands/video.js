@@ -10,7 +10,7 @@ module.exports.config = {
   hasPermssion: 0,
   credits: "ArYAN - Decor by Aminul Sordar",
   description: "🎬 Download YouTube video or audio by name or URL",
-  commandCategory: "🎵 Media",
+  commandCategory: "media",
   usages: "/video <title>\n/video -v <URL>\n/video -a <URL>",
   cooldowns: 5,
   dependencies: {
