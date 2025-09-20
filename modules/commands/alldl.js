@@ -1,106 +1,115 @@
-const axios = require('axios');
+const axios = require("axios");
+const fs = require("fs-extra");
+
+const baseApiUrl = async () => {
+  const base = await axios.get(
+    `https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json`
+  );
+  return base.data.api;
+};
 
 module.exports = {
   config: {
-    name: 'alldl',
-    version: '1.0',
-    author: 'Farhan',
-    countDown: 5,
-    prefix: true,
+    name: "alldl",
+    version: "1.0.5",
+    author: "Farhan",
+    countDown: 2,
+    prefix: true, // requires prefix
     adminOnly: false,
     aliases: [],
-    description: '',
-    category: 'media',
+    description: "Download video from TikTok, Facebook, Instagram, YouTube, Imgur, and more.",
+    category: "MEDIA",
     guide: {
-      en: '{pn} [url] or reply to a message with url'
-    }
+      en: "{pn} [video_link]",
+    },
   },
 
-  onStart: async function({ message, args, event, threadsData, role }) {
-    let videoUrl = args.join(" ");
+  run: async ({ api, args, event }) => {
+    const dipto = event.messageReply?.body || args[0];
 
-    // Handle auto-download toggle for admins
-    if ((args[0] === 'chat' && (args[1] === 'on' || args[1] === 'off')) || args[0] === 'on' || args[0] === 'off') {
-      if (role >= 1) {
-        const choice = args[0] === 'on' || args[1] === 'on';
-        // Properly structure the data storage
-        await threadsData.set(event.threadID, { autoDownload: choice });
-        return message.reply(`Auto-download has been turned ${choice ? 'on' : 'off'} for this group.`);
-      } else {
-        return message.reply("You don't have permission to toggle auto-download.");
-      }
+    if (!dipto) {
+      return api.setMessageReaction("❌", event.messageID, () => {}, true);
     }
 
-    // Get URL from message reply if no URL provided as argument
-    if (!videoUrl) {
-      if (event.messageReply && event.messageReply.body) {
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        const foundURLs = event.messageReply.body.match(urlRegex);
-        if (foundURLs && foundURLs.length > 0) {
-          videoUrl = foundURLs[0];
-        } else {
-          return message.reply("No URL found. Please provide a valid URL.");
-        }
-      } else {
-        return message.reply("Please provide a URL to start downloading.");
-      }
-    }
-
-    // Validate URL format
     try {
-      new URL(videoUrl);
-    } catch (e) {
-      return message.reply("Please provide a valid URL.");
-    }
+      api.setMessageReaction("⏳", event.messageID, () => {}, true);
 
-    message.reaction("⏳", event.messageID);
-    await this.downloadVideo({ videoUrl, message, event });
-  },
+      // Call API
+      const { data } = await axios.get(
+        `${await baseApiUrl()}/alldl?url=${encodeURIComponent(dipto)}`
+      );
 
-  onChat: async function({ event, message, threadsData }) {
-    try {
-      const threadData = await threadsData.get(event.threadID);
-      // Fix data access pattern
-      if (!threadData || !threadData.autoDownload || event.senderID === global.botID) return;
-      
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const foundURLs = event.body.match(urlRegex);
+      if (!data || !data.result) {
+        api.setMessageReaction("❎", event.messageID, () => {}, true);
+        return api.sendMessage(
+          "⚠️ Could not fetch a valid download link. Please try another URL.",
+          event.threadID,
+          event.messageID
+        );
+      }
 
-      if (foundURLs && foundURLs.length > 0) {
-        const videoUrl = foundURLs[0];
-        // Validate URL before processing
+      // Ensure cache directory exists
+      const cacheDir = __dirname + "/cache";
+      if (!fs.existsSync(cacheDir)) {
+        fs.mkdirSync(cacheDir, { recursive: true });
+      }
+
+      // Save video/photo
+      const filePath = `${cacheDir}/download.mp4`;
+      const fileBuffer = (
+        await axios.get(data.result, { responseType: "arraybuffer" })
+      ).data;
+      fs.writeFileSync(filePath, Buffer.from(fileBuffer));
+
+      // Shorten URL if utils exists
+      let shortUrl = data.result;
+      if (global.utils && global.utils.shortenURL) {
         try {
-          new URL(videoUrl);
-          message.reaction("⏳", event.messageID);
-          await this.downloadVideo({ videoUrl, message, event });
+          shortUrl = await global.utils.shortenURL(data.result);
         } catch (e) {
-          // Invalid URL, skip processing
-          console.error("Invalid URL in chat:", videoUrl);
+          shortUrl = data.result; // fallback
         }
       }
+
+      // Success Reaction + Send File
+      api.setMessageReaction("✅", event.messageID, () => {}, true);
+      api.sendMessage(
+        {
+          body: `${data.cp || "✅ Download Complete"}\nLink: ${shortUrl}`,
+          attachment: fs.createReadStream(filePath),
+        },
+        event.threadID,
+        () => fs.unlinkSync(filePath),
+        event.messageID
+      );
+
+      // Imgur Direct Download
+      if (dipto.startsWith("https://i.imgur.com")) {
+        const diptoExt = dipto.substring(dipto.lastIndexOf("."));
+        const imgBuffer = (
+          await axios.get(dipto, { responseType: "arraybuffer" })
+        ).data;
+
+        const filename = `${cacheDir}/dipto${diptoExt}`;
+        fs.writeFileSync(filename, Buffer.from(imgBuffer));
+
+        api.sendMessage(
+          {
+            body: `✅ | Downloaded from Imgur`,
+            attachment: fs.createReadStream(filename),
+          },
+          event.threadID,
+          () => fs.unlinkSync(filename),
+          event.messageID
+        );
+      }
     } catch (error) {
-      console.error("onChat Error:", error);
+      api.setMessageReaction("❎", event.messageID, () => {}, true);
+      api.sendMessage(
+        `❌ Error: ${error.message}`,
+        event.threadID,
+        event.messageID
+      );
     }
   },
-
-  downloadVideo: async function({ videoUrl, message, event }) {
-    try {
-      const apiResponse = await axios.get(`https://noobs-api.top/dipto/alldl?url=${encodeURIComponent(videoUrl)}`);
-      const videoData = apiResponse.data;
-
-      if (!videoData || !videoData.result) {
-        throw new Error("Invalid response from API.");
-      }
-      
-      message.reaction("✅", event.messageID);
-      message.reply({
-        body: videoData.title || 'Downloaded video',
-        attachment: await global.utils.getStreamFromURL(videoData.result, 'fb.mp4')
-      });
-    } catch (error) {
-      message.reaction("❌", event.messageID);
-      console.error("Download Error:", error);
-      message.reply("Failed to download the video. Please check the URL and try again.");
-    }
-  }
 };
